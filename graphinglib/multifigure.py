@@ -1,3 +1,4 @@
+import tkinter
 from string import ascii_lowercase
 from typing import Literal, Optional, Self
 
@@ -392,6 +393,7 @@ class MultiFigure:
         """
         Prepares the :class:`~graphinglib.multifigure.MultiFigure` to be displayed.
         """
+        size_is_default = True if self.size == "default" else False
         try:
             file_loader = FileLoader(self.figure_style)
             self.default_params = file_loader.load()
@@ -413,7 +415,11 @@ class MultiFigure:
         multi_figure_params_to_reset = self._fill_in_missing_params(self)
 
         self._fill_in_rc_params(is_matplotlib_style)
-        self._figure = plt.figure(layout="constrained", figsize=self.size)
+        if size_is_default:
+            ideal_size = self._get_ideal_size()
+        else:
+            ideal_size = self.size
+        self._figure = plt.figure(layout="constrained", figsize=ideal_size)
         MultiFigure_grid = GridSpec(self.num_rows, self.num_cols, figure=self._figure)
 
         if self.reflabel_loc == "outside":
@@ -714,3 +720,87 @@ class MultiFigure:
             key: value for key, value in rc_params_dict.items() if value is not None
         }
         self.update_rc_params(rc_params_dict, reset=reset)
+
+    def _get_ideal_size(self) -> tuple[float, float]:
+        """
+        Calculates the ideal size for the :class:`~graphinglib.multifigure.MultiFigure` based on the size of the
+        :class:`~graphinglib.figure.Figure` objects it contains.
+
+        Returns
+        -------
+        A tuple containing the ideal size of the :class:`~graphinglib.multifigure.MultiFigure`.
+        """
+        screen_width, screen_height = self._get_screen_dimensions_inches()
+        default_size = self.default_params["MultiFigure"]["size"]
+        # See if the grid fits on your screen
+        multi_figure_dims = (
+            default_size[0] * self.num_cols,
+            default_size[1] * self.num_rows,
+        )
+        if (
+            multi_figure_dims[0] <= screen_width
+            and multi_figure_dims[1] <= screen_height
+        ):
+            return multi_figure_dims
+        else:
+            return self._scaled_down_dims(
+                multi_figure_dims,
+                screen_width,
+                screen_height,
+            )
+
+    def _get_screen_dimensions_inches(self) -> tuple[float, float]:
+        """
+        Gets the dimensions of the screen in inches.
+
+        Returns
+        -------
+        A tuple containing the dimensions of the screen in inches.
+        """
+        root = tkinter.Tk()
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        root.destroy()
+
+        dpi = plt.rcParams["figure.dpi"]
+        screen_width_inches = screen_width / dpi
+        screen_height_inches = screen_height / dpi
+
+        return screen_width_inches, screen_height_inches
+
+    def _scaled_down_dims(
+        self,
+        multi_figure_dims: tuple[float, float],
+        screen_width: float,
+        screen_height: float,
+    ) -> tuple[float, float]:
+        """
+        Scales down the dimensions of the :class:`~graphinglib.multifigure.MultiFigure` to fit on the screen.
+
+        Parameters
+        ----------
+        multi_figure_dims : tuple[float, float]
+            The dimensions of the :class:`~graphinglib.multifigure.MultiFigure` in inches.
+        screen_width : float
+            The width of the screen in inches.
+        screen_height : float
+            The height of the screen in inches.
+
+        Returns
+        -------
+        A tuple containing the scaled down dimensions of the :class:`~graphinglib.multifigure.MultiFigure`.
+        """
+        scale_factor = min(
+            screen_width / multi_figure_dims[0],
+            screen_height / multi_figure_dims[1],
+        )
+        scaled_dims = (
+            multi_figure_dims[0] * scale_factor,
+            multi_figure_dims[1] * scale_factor,
+        )
+        # adjust for menu bar
+        scaled_dims = (
+            scaled_dims[0],
+            scaled_dims[1] * 0.9,
+        )
+        return scaled_dims
