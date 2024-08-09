@@ -1374,6 +1374,20 @@ class Scatter(MathematicalObject):
     marker_style : str
         Style of the points.
         Default depends on the ``figure_style`` configuration.
+    x_error, y_error : float or ArrayLike, optional
+        Floats or arrays of x and y errors. A float will result in a constant error for all points. Use one or both.
+    errorbars_color : str
+        Color of the errorbars.
+        Default depends on the ``figure_style`` configuration.
+    errorbars_line_width : float
+        Width of the errorbars.
+        Default depends on the ``figure_style`` configuration.
+    cap_thickness : float
+        Thickness of the errorbar caps.
+        Default depends on the ``figure_style`` configuration.
+    cap_width : float
+        Width of the errorbar caps.
+        Default depends on the ``figure_style`` configuration.
     """
 
     def __init__(
@@ -1387,6 +1401,12 @@ class Scatter(MathematicalObject):
         show_color_bar: bool | Literal["default"] = "default",
         marker_size: float | Literal["default"] = "default",
         marker_style: str = "default",
+        x_error: float | ArrayLike = 0,
+        y_error: float | ArrayLike = 0,
+        errorbars_color: str = "default",
+        errorbars_line_width: float | Literal["default"] = "default",
+        cap_thickness: float | Literal["default"] = "default",
+        cap_width: float | Literal["default"] = "default",
     ) -> None:
         """
         This class implements a general scatter plot.
@@ -1416,6 +1436,20 @@ class Scatter(MathematicalObject):
         marker_style : str
             Style of the points.
             Default depends on the ``figure_style`` configuration.
+        x_error, y_error : float or ArrayLike, optional
+            Floats or arrays of x and y errors. A float will result in a constant error for all points. Use one or both.
+        errorbars_color : str
+            Color of the errorbars.
+            Default depends on the ``figure_style`` configuration.
+        errorbars_line_width : float
+            Width of the errorbars.
+            Default depends on the ``figure_style`` configuration.
+        cap_thickness : float
+            Thickness of the errorbar caps.
+            Default depends on the ``figure_style`` configuration.
+        cap_width : float
+            Width of the errorbar caps.
+            Default depends on the ``figure_style`` configuration.
         """
         self.points_handle = None
         self.errorbars_handle = None
@@ -1429,11 +1463,14 @@ class Scatter(MathematicalObject):
         self._marker_size = marker_size
         self._marker_style = marker_style
 
-        self._show_errorbars: bool = False
-        self._errorbars_line_width: float = 1.0
-        self._cap_width: float = 3.0
-        self._cap_thickness: float = 1.0
-        self._errorbars_color: Optional[str] = None
+        self.add_errorbars(
+            x_error=x_error,
+            y_error=y_error,
+            errorbars_color=errorbars_color,
+            errorbars_line_width=errorbars_line_width,
+            cap_thickness=cap_thickness,
+            cap_width=cap_width,
+        )
 
     @classmethod
     def from_function(
@@ -1574,14 +1611,6 @@ class Scatter(MathematicalObject):
         self._marker_style = marker_style
 
     @property
-    def show_errorbars(self) -> bool:
-        return self._show_errorbars
-
-    @show_errorbars.setter
-    def show_errorbars(self, show_errorbars: bool) -> None:
-        self._show_errorbars = show_errorbars
-
-    @property
     def errorbars_line_width(self) -> float:
         return self._errorbars_line_width
 
@@ -1613,6 +1642,28 @@ class Scatter(MathematicalObject):
     def errorbars_color(self, errorbars_color: str) -> None:
         self._errorbars_color = errorbars_color
 
+    def _get_new_scatter(self, y_data: ArrayLike, y_error: ArrayLike) -> Self:
+        """
+        Gives a new Scatter with the modified y data and errors.
+        """
+        return Scatter(
+            x_data=self._x_data,
+            y_data=y_data,
+            x_error=0,
+            y_error=y_error,
+            label=self._label,
+            face_color=self._face_color,
+            edge_color=self._edge_color,
+            color_map=self._color_map,
+            show_color_bar=self._show_color_bar,
+            marker_size=self._marker_size,
+            marker_style=self._marker_style,
+            errorbars_color=self._errorbars_color,
+            errorbars_line_width=self._errorbars_line_width,
+            cap_thickness=self._cap_thickness,
+            cap_width=self._cap_width,
+        )
+
     def __add__(self, other: Self | float) -> Self:
         """
         Defines the addition of two scatter plots or a scatter plot and a number.
@@ -1625,14 +1676,15 @@ class Scatter(MathematicalObject):
                     "Cannot add two scatter plots with different x values."
                 )
             new_y_data = self._y_data + other._y_data
-            return Scatter(self._x_data, new_y_data)
+            new_y_error = self._y_error + other._y_error
         elif isinstance(other, (int, float)):
             new_y_data = self._y_data + other
-            return Scatter(self._x_data, new_y_data)
+            new_y_error = self._y_error.copy()
         else:
             raise TypeError(
                 "Can only add a scatter plot to another scatter plot or a number."
             )
+        return self._get_new_scatter(new_y_data, new_y_error)
 
     def __sub__(self, other: Self | float) -> Self:
         """
@@ -1646,14 +1698,15 @@ class Scatter(MathematicalObject):
                     "Cannot subtract two scatter plots with different x values."
                 )
             new_y_data = self._y_data - other._y_data
-            return Scatter(self._x_data, new_y_data)
+            new_y_error = self._y_data + other._y_data
         elif isinstance(other, (int, float)):
             new_y_data = self._y_data - other
-            return Scatter(self._x_data, new_y_data)
+            new_y_error = self._y_error.copy()
         else:
             raise TypeError(
                 "Can only subtract a scatter plot from another scatter plot or a number."
             )
+        return self._get_new_scatter(new_y_data, new_y_error)
 
     def __mul__(self, other: Self | float) -> Self:
         """
@@ -1667,14 +1720,15 @@ class Scatter(MathematicalObject):
                     "Cannot multiply two scatter plots with different x values."
                 )
             new_y_data = self._y_data * other._y_data
-            return Scatter(self._x_data, new_y_data)
+            new_y_error = (self._y_error / self._y_data + other._y_error / other._y_data) * new_y_data
         elif isinstance(other, (int, float)):
             new_y_data = self._y_data * other
-            return Scatter(self._x_data, new_y_data)
+            new_y_error = self._y_error * other
         else:
             raise TypeError(
                 "Can only multiply a scatter plot by another scatter plot or a number."
             )
+        return self._get_new_scatter(new_y_data, new_y_error)
 
     def __truediv__(self, other: Self | float) -> Self:
         """
@@ -1688,14 +1742,15 @@ class Scatter(MathematicalObject):
                     "Cannot divide two scatter plots with different x values."
                 )
             new_y_data = self._y_data / other._y_data
-            return Scatter(self._x_data, new_y_data)
+            new_y_error = (self._y_error / self._y_data + other._y_error / other._y_data) * new_y_data
         elif isinstance(other, (int, float)):
             new_y_data = self._y_data / other
-            return Scatter(self._x_data, new_y_data)
+            new_y_error = self._y_error / other
         else:
             raise TypeError(
                 "Can only divide a scatter plot by another scatter plot or a number."
             )
+        return self._get_new_scatter(new_y_data, new_y_error)
 
     def __pow__(self, other: float) -> Self:
         """
@@ -1703,10 +1758,11 @@ class Scatter(MathematicalObject):
         """
         if isinstance(other, (int, float)):
             new_y_data = self._y_data**other
-            return Scatter(self._x_data, new_y_data)
+            new_y_error = np.abs(self._y_error / self._y_data * other * new_y_data)
+            return self._get_new_scatter(new_y_data, new_y_error)
         else:
             raise TypeError(
-                "Can only raise a scatter plot to another scatter plot or a number."
+                "Can only raise a scatter plot to a number."
             )
 
     def __iter__(self):
@@ -1720,13 +1776,28 @@ class Scatter(MathematicalObject):
         Defines the absolute value of a scatter plot.
         """
         new_y_data = np.abs(self._y_data)
-        return Scatter(self._x_data, new_y_data)
+        new_y_error = self._y_error.copy()
+        return self._get_new_scatter(new_y_data, new_y_error)
 
     def copy(self) -> Self:
         """
         Returns a deep copy of the :class:`~graphinglib.data_plotting_1d.Scatter` object.
         """
         return deepcopy(self)
+    
+    def _create_slice(self, mask: np.ndarray, **kwargs) -> Self:
+        """
+        Creates a slice of the scatter plot between two x or y values.
+        """
+        for key, value in kwargs.items():
+            if value != "default":
+                setattr(self, key, value)
+
+        if kwargs["_label"] is not None:
+            self._label = kwargs["_label"]
+        
+        return self
+
 
     def create_slice_x(
         self,
@@ -1739,6 +1810,10 @@ class Scatter(MathematicalObject):
         show_color_bar: bool | Literal["default"] = "default",
         marker_size: float | Literal["default"] = "default",
         marker_style: str = "default",
+        errorbars_color: str = "default",
+        errorbars_line_width: float | Literal["default"] = "default",
+        cap_thickness: float | Literal["default"] = "default",
+        cap_width: float | Literal["default"] = "default",
         copy_first: bool = False,
     ) -> Self:
         """
@@ -1769,6 +1844,18 @@ class Scatter(MathematicalObject):
         marker_style : str
             Style of the points.
             Default depends on the ``figure_style`` configuration.
+        errorbars_color : str
+            Color of the errorbars.
+            Default depends on the ``figure_style`` configuration.
+        errorbars_line_width : float
+            Width of the errorbars.
+            Default depends on the ``figure_style`` configuration.
+        cap_thickness : float
+            Thickness of the errorbar caps.
+            Default depends on the ``figure_style`` configuration.
+        cap_width : float
+            Width of the errorbar caps.
+            Default depends on the ``figure_style`` configuration.
         copy_first : bool
             If ``True``, a copy of the scatter plot (with all its parameters) will be returned with the slice applied. Any other parameters passed to this method will also be applied to the copied scatter plot. If ``False``, a new scatter plot will be created with the slice applied and the parameters passed to this method.
 
@@ -1778,37 +1865,23 @@ class Scatter(MathematicalObject):
             A new :class:`~graphinglib.data_plotting_1d.Scatter` object which is a slice of the original scatter plot.
         """
         mask = (self._x_data >= x_min) & (self._x_data <= x_max)
+        params = {
+            "_label" : label,
+            "_face_color" : face_color,
+            "_edge_color" : edge_color,
+            "_color_map" : color_map,
+            "_show_color_bar" : show_color_bar,
+            "_marker_size" : marker_size,
+            "_marker_style" : marker_style,
+            "_errorbars_color" : errorbars_color,
+            "_errorbars_line_width" : errorbars_line_width,
+            "_cap_thickness" : cap_thickness,
+            "_cap_width" : cap_width,
+        }
         if copy_first:
-            copy = self.copy()
-            copy._x_data = self._x_data[mask]
-            copy._y_data = self._y_data[mask]
-            if label is not None:
-                copy._label = label
-            if face_color != "default":
-                copy._face_color = face_color
-            if edge_color != "default":
-                copy._edge_color = edge_color
-            if color_map != "default":
-                copy._color_map = color_map
-            if show_color_bar != "default":
-                copy._show_color_bar = show_color_bar
-            if marker_size != "default":
-                copy._marker_size = marker_size
-            if marker_style != "default":
-                copy._marker_style = marker_style
-            return copy
+            return self.copy()._create_slice(mask, **params)
         else:
-            return Scatter(
-                self._x_data[mask],
-                self._y_data[mask],
-                label,
-                face_color,
-                edge_color,
-                color_map,
-                show_color_bar,
-                marker_size,
-                marker_style,
-            )
+            return self._create_slice(mask, **params)
 
     def create_slice_y(
         self,
@@ -1821,6 +1894,10 @@ class Scatter(MathematicalObject):
         show_color_bar: bool | Literal["default"] = "default",
         marker_size: float | Literal["default"] = "default",
         marker_style: str = "default",
+        errorbars_color: str = "default",
+        errorbars_line_width: float | Literal["default"] = "default",
+        cap_thickness: float | Literal["default"] = "default",
+        cap_width: float | Literal["default"] = "default",
         copy_first: bool = False,
     ) -> Self:
         """
@@ -1851,66 +1928,6 @@ class Scatter(MathematicalObject):
         marker_style : str
             Style of the points.
             Default depends on the ``figure_style`` configuration.
-        copy_first : bool
-            If ``True``, a copy of the scatter plot (with all its parameters) will be returned with the slice applied. Any other parameters passed to this method will also be applied to the copied scatter plot. If ``False``, a new scatter plot will be created with the slice applied and the parameters passed to this method.
-
-        Returns
-        -------
-        :class:`~graphinglib.data_plotting_1d.Scatter`
-            A new :class:`~graphinglib.data_plotting_1d.Scatter` object which is a slice of the original scatter plot.
-        """
-        mask = (self._y_data >= y_min) & (self._y_data <= y_max)
-        if copy_first:
-            copy = self.copy()
-            copy._x_data = self._x_data[mask]
-            copy._y_data = self._y_data[mask]
-            if label is not None:
-                copy._label = label
-            if face_color != "default":
-                copy._face_color = face_color
-            if edge_color != "default":
-                copy._edge_color = edge_color
-            if color_map != "default":
-                copy._color_map = color_map
-            if show_color_bar != "default":
-                copy._show_color_bar = show_color_bar
-            if marker_size != "default":
-                copy._marker_size = marker_size
-            if marker_style != "default":
-                copy._marker_style = marker_style
-            return copy
-        else:
-            return Scatter(
-                self._x_data[mask],
-                self._y_data[mask],
-                label,
-                face_color,
-                edge_color,
-                color_map,
-                show_color_bar,
-                marker_size,
-                marker_style,
-            )
-
-    def add_errorbars(
-        self,
-        x_error: Optional[ArrayLike] = None,
-        y_error: Optional[ArrayLike] = None,
-        cap_width: float | Literal["default"] = "default",
-        errorbars_color: str = "default",
-        errorbars_line_width: float | Literal["default"] = "default",
-        cap_thickness: float | Literal["default"] = "default",
-    ) -> None:
-        """
-        Adds errorbars to the scatter plot.
-
-        Parameters
-        ----------
-        x_error, y_error : ArrayLike, optional
-            Arrays of x and y errors. Use one or both.
-        cap_width : float
-            Width of the errorbar caps.
-            Default depends on the ``figure_style`` configuration.
         errorbars_color : str
             Color of the errorbars.
             Default depends on the ``figure_style`` configuration.
@@ -1920,10 +1937,71 @@ class Scatter(MathematicalObject):
         cap_thickness : float
             Thickness of the errorbar caps.
             Default depends on the ``figure_style`` configuration.
+        cap_width : float
+            Width of the errorbar caps.
+            Default depends on the ``figure_style`` configuration.
+        copy_first : bool
+            If ``True``, a copy of the scatter plot (with all its parameters) will be returned with the slice applied. Any other parameters passed to this method will also be applied to the copied scatter plot. If ``False``, a new scatter plot will be created with the slice applied and the parameters passed to this method.
+
+        Returns
+        -------
+        :class:`~graphinglib.data_plotting_1d.Scatter`
+            A new :class:`~graphinglib.data_plotting_1d.Scatter` object which is a slice of the original scatter plot.
         """
-        self._show_errorbars = True
-        self._x_error = np.array(x_error) if x_error is not None else x_error
-        self._y_error = np.array(y_error) if y_error is not None else y_error
+        mask = (self._y_data >= y_min) & (self._y_data <= y_max)
+        params = {
+            "_label" : label,
+            "_face_color" : face_color,
+            "_edge_color" : edge_color,
+            "_color_map" : color_map,
+            "_show_color_bar" : show_color_bar,
+            "_marker_size" : marker_size,
+            "_marker_style" : marker_style,
+            "_errorbars_color" : errorbars_color,
+            "_errorbars_line_width" : errorbars_line_width,
+            "_cap_thickness" : cap_thickness,
+            "_cap_width" : cap_width,
+        }
+        if copy_first:
+            return self.copy()._create_slice(mask, **params)
+        else:
+            return self._create_slice(mask, **params)
+
+    def add_errorbars(
+        self,
+        x_error: float | ArrayLike = 0,
+        y_error: float | ArrayLike = 0,
+        errorbars_color: str = "default",
+        errorbars_line_width: float | Literal["default"] = "default",
+        cap_thickness: float | Literal["default"] = "default",
+        cap_width: float | Literal["default"] = "default",
+    ) -> None:
+        """
+        Adds errorbars to the scatter plot.
+
+        Parameters
+        ----------
+        x_error, y_error : float or ArrayLike, optional
+            Floats or arrays of x and y errors. A float will result in a constant error for all points. It is possible
+            to specify the error of a single axis or both axes.
+        cap_width : float
+            Width of the errorbar caps.
+            Default depends on the ``figure_style`` configuration.
+        errorbars_color : str
+            Color of the errorbars.
+            Default depends on the ``figure_style`` configuration.
+        cap_thickness : float
+            Thickness of the errorbar caps.
+            Default depends on the ``figure_style`` configuration.
+        errorbars_line_width : float
+            Width of the errorbars.
+            Default depends on the ``figure_style`` configuration.
+        """
+        self._x_error = np.array([x_error])
+        self._x_error.resize(self._x_data.shape)
+        self._y_error = np.array([y_error])
+        self._y_error.resize(self._y_data.shape)
+
         self._errorbars_color = errorbars_color
         self._errorbars_line_width = errorbars_line_width
         self._cap_thickness = cap_thickness
@@ -2122,7 +2200,7 @@ class Scatter(MathematicalObject):
         """
         Plots the element in the specified axes.
         """
-        if self._show_errorbars:
+        if np.sum(self._x_error) > 0 or np.sum(self._y_error) > 0:
             errorbar_params = {
                 "markerfacecolor": None,
                 "markeredgecolor": None,
