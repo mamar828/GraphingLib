@@ -233,29 +233,36 @@ class Arrow(Plottable):
                     )
         else:
             style = self._style
-        head_length, head_width = self._head_size * 0.4, self._head_size * 0.2
 
-        # Set specific arrow properties
-        match self._style:
-            case "->" | "-|>" | "simple" | "fancy":
-                prop_style_values = (
-                    f"head_width={head_width}, head_length={head_length}"
-                )
-            case "-[":
-                prop_style_values = f"widthB={head_width}" + (
-                    f", widthA={head_width}" if self._two_sided else ""
-                )
-            case "]->":
-                prop_style_values = f"widthA={head_width}"
-            case "wedge":
-                prop_style_values = f"tail_width={head_width}"
+        if self._head_size != "default":
+            head_length, head_width = self._head_size * 0.4, self._head_size * 0.2
+
+            # Set specific arrow properties
+            match self._style:
+                case "->" | "-|>" | "simple" | "fancy":
+                    prop_style_values = (
+                        f"head_width={head_width}, head_length={head_length}"
+                    )
+                case "-[":
+                    prop_style_values = f"widthB={head_width}" + (
+                        f", widthA={head_width}" if self._two_sided else ""
+                    )
+                case "]->":
+                    prop_style_values = f"widthA={head_width}"
+                case "wedge":
+                    prop_style_values = f"tail_width={head_width}"
+
+            arrow_style = f"{style}, {prop_style_values}"
+        else:
+            arrow_style = style
 
         props = {
-            "arrowstyle": f"{style}, {prop_style_values}",
+            "arrowstyle": arrow_style,
             "color": self._color,
             "linewidth": self._width,
             "alpha": self._alpha,
         }
+        props = {k: v for k, v in props.items() if v != "default"}
         if self._shrink != 0:
             shrinkPointA, shrinkPointB = self._shrink_points()
             axes.annotate(
@@ -401,6 +408,7 @@ class Line(Plottable):
             "linewidth": self._width,
             "alpha": self._alpha,
         }
+        props = {k: v for k, v in props.items() if v != "default"}
         axes.annotate(
             "",
             self._pointA,
@@ -846,24 +854,26 @@ class Polygon(Plottable):
     def _plot_element(self, axes: plt.Axes, z_order: int, **kwargs):
         # Create a polygon patch for the fill
         if self._fill:
-            kwargs = {
+            params = {
                 "alpha": self._fill_alpha,
                 "zorder": z_order,
             }
             if self._fill_color is not None:
-                kwargs["facecolor"] = self._fill_color
-            polygon_fill = MPLPolygon(self.vertices, **kwargs)
+                params["facecolor"] = self._fill_color
+            params = {k: v for k, v in params.items() if v != "default"}
+            polygon_fill = MPLPolygon(self.vertices, **params)
             axes.add_patch(polygon_fill)
         # Create a polygon patch for the edge
         if self._edge_color is not None:
-            kwargs = {
+            params = {
                 "fill": None,
                 "linewidth": self._line_width,
                 "linestyle": self._line_style,
                 "edgecolor": self._edge_color,
                 "zorder": z_order,
             }
-            polygon_edge = MPLPolygon(self.vertices, **kwargs)
+            params = {k: v for k, v in params.items() if v != "default"}
+            polygon_edge = MPLPolygon(self.vertices, **params)
             axes.add_patch(polygon_edge)
 
 
