@@ -1626,13 +1626,15 @@ class PlottableAxMethod(Plottable):
         `Axes <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.html>`_.
         """
         try:
-            self.handle = getattr(axes, self.meth)(
-                *self.args, zorder=z_order, **self.kwargs
-            )[0]
+            attrs = getattr(axes, self.meth)(*self.args, zorder=z_order, **self.kwargs)
+            if isinstance(attrs, list) and len(attrs) > 0:
+                self.handle = attrs[0]
         except TypeError as e:
             if "zorder" in str(e):
                 try:
-                    self.handle = getattr(axes, self.meth)(*self.args, **self.kwargs)[0]
+                    attrs = getattr(axes, self.meth)(*self.args, **self.kwargs)
+                    if isinstance(attrs, list) and len(attrs) > 0:
+                        self.handle = attrs[0]
                 except Exception as e2:
                     raise GraphingException(
                         f"Failed to call Axes method '{self.meth}' with provided arguments. Please check that all "
