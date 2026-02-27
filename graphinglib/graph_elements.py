@@ -1654,14 +1654,18 @@ class PlottableAxMethod(Plottable):
             class. If not, an exception will be raised when attempting to plot the element.
     *args
         Positional arguments to pass to ``axes.meth``.
+    label : str, optional
+        Label to be attached to the :class:`~graphinglib.graph_elements.PlottableAxMethod`.
     **kwargs
         Keyword arguments to pass to ``axes.meth``.
     """
 
-    def __init__(self, meth: str, *args, **kwargs) -> None:
+    def __init__(self, meth: str, *args, label: Optional[str] = None, **kwargs) -> None:
         self.meth = meth
         self.args = args
         self.kwargs = kwargs
+        self.label = label
+        self.handle = None
 
     def _plot_element(self, axes: plt.Axes, z_order: int, **kwargs) -> None:
         """
@@ -1669,11 +1673,15 @@ class PlottableAxMethod(Plottable):
         `Axes <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.html>`_.
         """
         try:
-            getattr(axes, self.meth)(*self.args, zorder=z_order, **self.kwargs)
+            attrs = getattr(axes, self.meth)(*self.args, zorder=z_order, **self.kwargs)
+            if isinstance(attrs, list) and len(attrs) > 0:
+                self.handle = attrs[0]
         except TypeError as e:
             if "zorder" in str(e):
                 try:
-                    getattr(axes, self.meth)(*self.args, **self.kwargs)
+                    attrs = getattr(axes, self.meth)(*self.args, **self.kwargs)
+                    if isinstance(attrs, list) and len(attrs) > 0:
+                        self.handle = attrs[0]
                 except Exception as e2:
                     raise GraphingException(
                         f"Failed to call Axes method '{self.meth}' with provided arguments. Please check that all "
