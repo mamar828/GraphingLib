@@ -1211,7 +1211,7 @@ class Curve(Plottable1D, MathematicalObject):
         # y = f(x)
         x = x_data[(x_data >= x1) & (x_data <= x2)]
         y = y_data[(x_data >= x1) & (x_data <= x2)]
-        return np.trapz(np.sqrt(1 + np.gradient(y, x) ** 2), x)
+        return np.trapezoid(np.sqrt(1 + np.gradient(y, x) ** 2), x)
 
     def get_area_between(
         self,
@@ -1252,7 +1252,7 @@ class Curve(Plottable1D, MathematicalObject):
             mask = (x_data >= x1) & (x_data <= x2)
             y = y_data[mask]
             x = x_data[mask]
-            return np.trapz(y, x)
+            return np.trapezoid(y, x)
         else:
             if fill_between:
                 self._fill_between_bounds = (x1, x2)
@@ -1277,7 +1277,7 @@ class Curve(Plottable1D, MathematicalObject):
                 y2 = np.interp(common_x, other_curve._x_data, other_curve._y_data)
 
             difference = y1 - y2
-            area = np.trapz(difference, common_x)
+            area = np.trapezoid(difference, common_x)
             return area
 
     def get_intersection_coordinates(
