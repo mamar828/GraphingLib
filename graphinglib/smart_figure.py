@@ -1357,8 +1357,14 @@ class SmartFigure:
             existing_row, existing_col = existing_key
 
             # Check if there's any overlap
-            row_overlap = not (row_slice.stop <= existing_row.start or row_slice.start >= existing_row.stop)
-            col_overlap = not (col_slice.stop <= existing_col.start or col_slice.start >= existing_col.stop)
+            row_overlap = not (
+                row_slice.stop <= existing_row.start
+                or row_slice.start >= existing_row.stop
+            )
+            col_overlap = not (
+                col_slice.stop <= existing_col.start
+                or col_slice.start >= existing_col.stop
+            )
 
             if row_overlap and col_overlap:
                 overlapping.append((existing_key, element))
